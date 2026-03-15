@@ -1,4 +1,4 @@
-function ControlsPanel({ battingStyle, gameOver, onStyleChange, onPlayBall, onRestart }) {
+function ControlsPanel({ battingStyle, gameOver, isBallInProgress, onStyleChange, onPlayBall, onRestart }) {
   function getAggressiveButtonClass() {
     if (battingStyle === 'aggressive') {
       return 'border px-4 py-2 border-red-700 bg-red-600 text-white'
@@ -22,6 +22,7 @@ function ControlsPanel({ battingStyle, gameOver, onStyleChange, onPlayBall, onRe
         <button
           type="button"
           onClick={() => onStyleChange('aggressive')}
+          disabled={gameOver || isBallInProgress}
           className={getAggressiveButtonClass()}
         >
           Aggressive
@@ -30,6 +31,7 @@ function ControlsPanel({ battingStyle, gameOver, onStyleChange, onPlayBall, onRe
         <button
           type="button"
           onClick={() => onStyleChange('defensive')}
+          disabled={gameOver || isBallInProgress}
           className={getDefensiveButtonClass()}
         >
           Defensive
@@ -40,10 +42,10 @@ function ControlsPanel({ battingStyle, gameOver, onStyleChange, onPlayBall, onRe
         <button
           type="button"
           onClick={onPlayBall}
-          disabled={gameOver}
+          disabled={gameOver || isBallInProgress}
           className="border border-slate-400 bg-yellow-300 px-4 py-2 disabled:bg-slate-300"
         >
-          Play Ball
+          {isBallInProgress ? 'Shot Processing...' : 'Play Ball'}
         </button>
 
         <button

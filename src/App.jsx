@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import CommentaryPanel from './components/CommentaryPanel'
 import ControlsPanel from './components/ControlsPanel'
 import DayNotes from './components/DayNotes'
@@ -12,11 +12,10 @@ import {
   COMMENTARY,
   PROBABILITY_TABLES,
   STYLE_LABELS,
-  TEST_OUTCOME_SEQUENCES,
   TOTAL_BALLS,
   TOTAL_WICKETS,
 } from './constants/gameConfig'
-import { formatOvers } from './utils/gameUtils'
+import { formatOvers, getOutcomeFromSlider } from './utils/gameUtils'
 
 function App() {
   const [runs, setRuns] = useState(0)
@@ -24,20 +23,51 @@ function App() {
   const [ballsBowled, setBallsBowled] = useState(0)
   const [battingStyle, setBattingStyle] = useState('aggressive')
   const [lastOutcome, setLastOutcome] = useState('Not played yet')
-  const [commentary, setCommentary] = useState('Choose a style and press Play Ball to test the Day 1 game loop.')
+  const [commentary, setCommentary] = useState('Press Play Ball when the slider reaches your target segment.')
   const [gameOver, setGameOver] = useState(false)
+  const [isBallInProgress, setIsBallInProgress] = useState(false)
+  const [sliderPosition, setSliderPosition] = useState(0)
+  const sliderDirectionRef = useRef(1)
 
   const ballsRemaining = TOTAL_BALLS - ballsBowled
   const wicketsRemaining = TOTAL_WICKETS - wickets
   const probabilityTable = PROBABILITY_TABLES[battingStyle]
 
+  useEffect(() => {
+    if (gameOver || isBallInProgress) {
+      return undefined
+    }
+
+    const intervalId = setInterval(() => {
+      setSliderPosition((previousPosition) => {
+        let nextPosition = previousPosition + sliderDirectionRef.current * 0.012
+
+        if (nextPosition >= 1) {
+          nextPosition = 1
+          sliderDirectionRef.current = -1
+        }
+
+        if (nextPosition <= 0) {
+          nextPosition = 0
+          sliderDirectionRef.current = 1
+        }
+
+        return nextPosition
+      })
+    }, 20)
+
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [gameOver, isBallInProgress])
+
   function handleStyleChange(style) {
-    if (gameOver) {
+    if (gameOver || isBallInProgress) {
       return
     }
 
     setBattingStyle(style)
-    setCommentary(`${STYLE_LABELS[style]} mode selected. Day 2 will connect this to the live power bar.`)
+    setCommentary(`${STYLE_LABELS[style]} mode selected. Time your shot with the moving slider.`)
   }
 
   function handleRestart() {
@@ -46,17 +76,21 @@ function App() {
     setBallsBowled(0)
     setBattingStyle('aggressive')
     setLastOutcome('Not played yet')
-    setCommentary('Match reset. Choose a style and press Play Ball to test the Day 1 game loop.')
+    setCommentary('Match reset. Press Play Ball when the slider reaches your target segment.')
     setGameOver(false)
+    setIsBallInProgress(false)
+    setSliderPosition(0)
+    sliderDirectionRef.current = 1
   }
 
   function handlePlayBall() {
-    if (gameOver) {
+    if (gameOver || isBallInProgress) {
       return
     }
 
-    const sequence = TEST_OUTCOME_SEQUENCES[battingStyle]
-    const outcome = sequence[ballsBowled % sequence.length]
+    setIsBallInProgress(true)
+
+    const outcome = getOutcomeFromSlider(probabilityTable, sliderPosition)
     const nextBallsBowled = ballsBowled + 1
     const nextRuns = outcome === 'W' ? runs : runs + Number(outcome)
     const nextWickets = outcome === 'W' ? wickets + 1 : wickets
@@ -71,7 +105,12 @@ function App() {
 
     if (hasMatchEnded) {
       setCommentary(`Game over. Final score: ${nextRuns}/${nextWickets} in ${formatOvers(nextBallsBowled)} overs.`)
+      return
     }
+
+    window.setTimeout(() => {
+      setIsBallInProgress(false)
+    }, 160)
   }
 
   return (
@@ -93,6 +132,7 @@ function App() {
             <ControlsPanel
               battingStyle={battingStyle}
               gameOver={gameOver}
+              isBallInProgress={isBallInProgress}
               onStyleChange={handleStyleChange}
               onPlayBall={handlePlayBall}
               onRestart={handleRestart}
@@ -100,7 +140,11 @@ function App() {
 
             <FieldPlaceholder />
 
-            <PowerBarPlaceholder probabilityTable={probabilityTable} />
+            <PowerBarPlaceholder
+              probabilityTable={probabilityTable}
+              sliderPosition={sliderPosition}
+              isBallInProgress={isBallInProgress}
+            />
           </div>
 
           <aside className="space-y-4">

@@ -35,8 +35,8 @@ export const COMMENTARY = {
   1: 'Single run',
   2: 'Two runs',
   3: 'Three runs',
-  4: 'Four',
-  6: 'Six',
+  4: 'Four shot',
+  6: 'Six shot',
 }
 
 export const STYLE_LABELS = {
