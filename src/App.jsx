@@ -17,6 +17,11 @@ import {
 } from './constants/gameConfig'
 import { formatOvers, getOutcomeFromSlider } from './utils/gameUtils'
 
+const BALL_TRAVEL_MS = 700
+const BALL_RESET_MS = 950
+const BAT_SWING_START_MS = 620
+const BAT_SWING_DURATION_MS = 220
+
 function App() {
   const [runs, setRuns] = useState(0)
   const [wickets, setWickets] = useState(0)
@@ -27,10 +32,13 @@ function App() {
   const [gameOver, setGameOver] = useState(false)
   const [isBallInProgress, setIsBallInProgress] = useState(false)
   const [isBowling, setIsBowling] = useState(false)
+  const [isBatSwinging, setIsBatSwinging] = useState(false)
   const [sliderPosition, setSliderPosition] = useState(0)
   const sliderDirectionRef = useRef(1)
   const resolveShotTimeoutRef = useRef(null)
   const resetBallTimeoutRef = useRef(null)
+  const batSwingStartTimeoutRef = useRef(null)
+  const batSwingEndTimeoutRef = useRef(null)
 
   const ballsRemaining = TOTAL_BALLS - ballsBowled
   const wicketsRemaining = TOTAL_WICKETS - wickets
@@ -73,6 +81,14 @@ function App() {
       if (resetBallTimeoutRef.current) {
         window.clearTimeout(resetBallTimeoutRef.current)
       }
+
+      if (batSwingStartTimeoutRef.current) {
+        window.clearTimeout(batSwingStartTimeoutRef.current)
+      }
+
+      if (batSwingEndTimeoutRef.current) {
+        window.clearTimeout(batSwingEndTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -85,6 +101,16 @@ function App() {
     if (resetBallTimeoutRef.current) {
       window.clearTimeout(resetBallTimeoutRef.current)
       resetBallTimeoutRef.current = null
+    }
+
+    if (batSwingStartTimeoutRef.current) {
+      window.clearTimeout(batSwingStartTimeoutRef.current)
+      batSwingStartTimeoutRef.current = null
+    }
+
+    if (batSwingEndTimeoutRef.current) {
+      window.clearTimeout(batSwingEndTimeoutRef.current)
+      batSwingEndTimeoutRef.current = null
     }
   }
 
@@ -108,6 +134,7 @@ function App() {
     setGameOver(false)
     setIsBallInProgress(false)
     setIsBowling(false)
+    setIsBatSwinging(false)
     setSliderPosition(0)
     sliderDirectionRef.current = 1
   }
@@ -119,6 +146,7 @@ function App() {
 
     setIsBallInProgress(true)
     setIsBowling(true)
+    setIsBatSwinging(false)
     setCommentary('Ball is coming in. Outcome will lock when it reaches the batsman.')
 
     const outcome = getOutcomeFromSlider(probabilityTable, sliderPosition)
@@ -126,6 +154,14 @@ function App() {
     const nextRuns = outcome === 'W' ? runs : runs + Number(outcome)
     const nextWickets = outcome === 'W' ? wickets + 1 : wickets
     const hasMatchEnded = nextBallsBowled >= TOTAL_BALLS || nextWickets >= TOTAL_WICKETS
+
+    batSwingStartTimeoutRef.current = window.setTimeout(() => {
+      setIsBatSwinging(true)
+    }, BAT_SWING_START_MS)
+
+    batSwingEndTimeoutRef.current = window.setTimeout(() => {
+      setIsBatSwinging(false)
+    }, BAT_SWING_START_MS + BAT_SWING_DURATION_MS)
 
     resolveShotTimeoutRef.current = window.setTimeout(() => {
       setRuns(nextRuns)
@@ -138,12 +174,13 @@ function App() {
       if (hasMatchEnded) {
         setCommentary(`Game over. Final score: ${nextRuns}/${nextWickets} in ${formatOvers(nextBallsBowled)} overs.`)
       }
-    }, 700)
+    }, BALL_TRAVEL_MS)
 
     resetBallTimeoutRef.current = window.setTimeout(() => {
       setIsBowling(false)
+      setIsBatSwinging(false)
       setIsBallInProgress(false)
-    }, 950)
+    }, BALL_RESET_MS)
   }
 
   return (
@@ -171,7 +208,7 @@ function App() {
               onRestart={handleRestart}
             />
 
-            <FieldPlaceholder isBowling={isBowling} />
+            <FieldPlaceholder isBowling={isBowling} isBatSwinging={isBatSwinging} />
 
             <PowerBarPlaceholder
               probabilityTable={probabilityTable}
