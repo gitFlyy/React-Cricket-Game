@@ -106,7 +106,6 @@ function App() {
       window.clearTimeout(batSwingStartTimeoutRef.current)
       batSwingStartTimeoutRef.current = null
     }
-
     if (batSwingEndTimeoutRef.current) {
       window.clearTimeout(batSwingEndTimeoutRef.current)
       batSwingEndTimeoutRef.current = null
